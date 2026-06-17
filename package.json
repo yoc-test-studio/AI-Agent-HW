@@ -1,19 +1,18 @@
 {
-  "name": "astrology-chatbot",
+  "name": "devtools-knowledge-base",
   "version": "0.1.0",
-  "description": "作業1：星座聊天機器人 阿水老師",
+  "description": "作業3：迷你知識庫 — AI 開發工具介紹",
   "type": "module",
-  "main": "main.js",
   "scripts": {
-    "start": "node main.js"
+    "init": "node scripts/init-knowledge.js",
+    "search": "node scripts/search-test.js"
   },
   "engines": {
     "node": ">=22.0.0"
   },
   "dependencies": {
-    "@inquirer/prompts": "^8.4.3",
+    "@qdrant/js-client-rest": "^1.18.0",
     "dotenv": "^17.4.2",
-    "lowdb": "^7.0.1",
     "openai": "^6.38.0"
   }
 }
