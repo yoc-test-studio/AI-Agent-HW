@@ -1,13 +1,56 @@
 import { input } from "@inquirer/prompts";
-import OpenAI from "openai";
-import { OPENAI_API_KEY } from "./config.js";
-import { initMessage, addMessage, getMessages } from "./db/messages.js";
+import { client, DEFAULT_MODEL } from "./lib/openai.js";
+import { spinner } from "./utils/spinner.js";
+import { toOpenAITool } from "./utils/func-tool.js";
+import * as allTools from "./tools/index.js";
 
-const client = new OpenAI({ apiKey: OPENAI_API_KEY });
+const toolList = Object.values(allTools);
+const tools = toolList.map(toOpenAITool);
+const AVAILABLE_TOOLS = Object.fromEntries(toolList.map((t) => [t.name, t.fn]));
 
-const SYSTEM_PROMPT = `你是「阿水老師」，一位入行二十多年的星座命理老師，講話親切像鄰家大姊，習慣用「親愛的～」開頭，偶爾穿插一兩個星座小玩笑。你的專業是十二星座的運勢與人際合盤，可以回答：今日運勢、今日宜忌、幸運色與幸運數字、水星逆行期間要注意的事，以及兩個星座的合盤分析與相處宜忌。請全程使用繁體中文，回答先講重點結論，再給三點具體可行的小建議，語氣溫暖正向。聊到感情或工作低潮時，先同理對方的心情再給方向。你只聊星座與生活開運話題，若被問到醫療、投資、法律等專業問題，請溫柔提醒對方尋求專業協助。`;
+const messages = [
+  {
+    role: "developer",
+    content:
+      "你是一個台北在地生活助手。你可以查現在的台灣時間，也可以用台北市的行政區名稱查 YouBike 站點。要查時間就呼叫 get_current_time，要查 YouBike 就呼叫 get_youbike_by_area；如果使用者一次問了時間和 YouBike，請兩個工具都呼叫。最後用繁體中文整理成自然的回覆。",
+  },
+];
 
-await initMessage(SYSTEM_PROMPT);
+async function chat() {
+  while (true) {
+    const spin = spinner("思考中...").start();
+    const response = await client.chat.completions.create({
+      model: DEFAULT_MODEL,
+      messages,
+      tools,
+      tool_choice: "auto",
+    });
+    spin.stop();
+
+    const message = response.choices[0].message;
+    messages.push(message);
+
+    if (!message.tool_calls || message.tool_calls.length === 0) {
+      console.log(message.content);
+      return;
+    }
+
+    for (const toolCall of message.tool_calls) {
+      const fnName = toolCall.function.name;
+      const args = JSON.parse(toolCall.function.arguments);
+      console.log(`[呼叫 tool] ${fnName}(${JSON.stringify(args)})`);
+
+      const fn = AVAILABLE_TOOLS[fnName];
+      const result = await fn(args);
+
+      messages.push({
+        role: "tool",
+        tool_call_id: toolCall.id,
+        content: JSON.stringify(result),
+      });
+    }
+  }
+}
 
 try {
   while (true) {
@@ -21,17 +64,8 @@ try {
       break;
     }
 
-    await addMessage(userQuestion);
-
-    const response = await client.chat.completions.create({
-      model: "gpt-5-mini",
-      messages: getMessages(),
-    });
-
-    const content = response.choices[0].message.content;
-    console.log(content);
-
-    await addMessage(content, "assistant");
+    messages.push({ role: "user", content: userQuestion });
+    await chat();
   }
 } catch (err) {
   if (err.name === "ExitPromptError") {
