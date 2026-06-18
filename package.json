@@ -1,19 +1,16 @@
 {
-  "name": "astrology-chatbot",
+  "name": "embedding-similarity-lab",
   "version": "0.1.0",
-  "description": "作業1：星座聊天機器人 阿水老師",
+  "description": "作業5：向量相似度實驗",
   "type": "module",
-  "main": "main.js",
   "scripts": {
-    "start": "node main.js"
+    "test": "node scripts/similarity-test.js"
   },
   "engines": {
     "node": ">=22.0.0"
   },
   "dependencies": {
-    "@inquirer/prompts": "^8.4.3",
     "dotenv": "^17.4.2",
-    "lowdb": "^7.0.1",
     "openai": "^6.38.0"
   }
 }
